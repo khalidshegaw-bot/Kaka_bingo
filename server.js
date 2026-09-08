@@ -62,7 +62,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 const PORT = process.env.PORT || 8080;
 const TOKEN = process.env.TOKEN;
-const WEB_APP_URL = 'https://july-wearing-daughters-how.trycloudflare.com';
+const WEB_APP_URL = 'https://colonialism-probable-gecko.abasthan.app';
 const ADMIN_CHAT_ID = '5328605923';
 
 const userStates = {};
