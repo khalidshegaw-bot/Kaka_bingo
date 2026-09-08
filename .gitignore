@@ -1,0 +1,10 @@
+node_modules/
+.env
+users.json
+db.json
+tunnel.log
+*.log
+loclx.zip
+ngrok.tgz
+server.js.backup
+*.backup

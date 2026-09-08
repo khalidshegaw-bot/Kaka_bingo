@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaka Bingo Plus</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e0533, #110221);
+      color: #fff;
+      text-align: center;
+      margin: 0;
+      padding: 15px;
+    }
+    h1 { color: #ffd700; margin-bottom: 5px; text-shadow: 0 0 10px #ff007f; }
+    .balance-card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      color: #00ffcc;
+    }
+    .room-select {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .room-btn {
+      background: #ff007f;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .room-btn.active { background: #00ffcc; color: #000; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    .cell {
+      background: #2a085c;
+      border: 2px solid #ff007f;
+      border-radius: 8px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .cell.selected { background: #00ffcc; color: #000; border-color: #fff; }
+    .cell.free { background: #ffd700; color: #000; }
+    .controls { margin-top: 20px; }
+    .btn-bingo {
+      background: linear-gradient(45deg, #ff007f, #ffd700);
+      border: none;
+      padding: 12px 30px;
+      font-size: 20px;
+      font-weight: bold;
+      color: white;
+      border-radius: 25px;
+      box-shadow: 0 0 15px #ff007f;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎲 KAKA BINGO 🎲</h1>
+  <div class="balance-card">Balance: <span id="balance">0.00</span> ETB</div>
+
+  <div class="room-select">
+    <button class="room-btn active" onclick="setRoom(10)">10 ETB</button>
+    <button class="room-btn" onclick="setRoom(50)">50 ETB</button>
+    <button class="room-btn" onclick="setRoom(100)">100 ETB</button>
+  </div>
+
+  <div class="board" id="bingoBoard"></div>
+
+  <div class="controls">
+    <button class="btn-bingo" onclick="claimBingo()">BINGO!</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user_id') || 'test_user';
+    let currentRoom = 10;
+    let selectedNumbers = [];
+
+    // Web Audio Synthesizer for FX
+    function playSound(type) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'click') {
+        osc.frequency.value = 400;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.05);
+      } else if (type === 'bingo') {
+        osc.frequency.setValueAtTime(300, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      }
+    }
+
+    async function fetchBalance() {
+      try {
+        const res = await fetch(`/api/user/${userId}`);
+        const data = await res.json();
+        document.getElementById('balance').innerText = data.balance.toFixed(2);
+      } catch (e) { console.error(e); }
+    }
+
+    function setRoom(amount) {
+      currentRoom = amount;
+      document.querySelectorAll('.room-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      playSound('click');
+    }
+
+    function createBoard() {
+      const board = document.getElementById('bingoBoard');
+      board.innerHTML = '';
+      for (let i = 1; i <= 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (i === 13) {
+          cell.innerText = 'FREE';
+          cell.classList.add('free');
+        } else {
+          cell.innerText = Math.floor(Math.random() * 15) + ((i % 5) * 15) + 1;
+          cell.onclick = () => {
+            cell.classList.toggle('selected');
+            playSound('click');
+          };
+        }
+        board.appendChild(cell);
+      }
+    }
+
+    async function claimBingo() {
+      playSound('bingo');
+      const res = await fetch(`/api/user/${userId}/claim-bingo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room: currentRoom })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`🎉 CONGRATULATIONS! You won ${data.winAmount} ETB!`);
+        fetchBalance();
+      } else {
+        alert(`❌ ${data.message}`);
+      }
+    }
+
+    fetchBalance();
+    createBoard();
+  </script>
+</body>
+</html>
