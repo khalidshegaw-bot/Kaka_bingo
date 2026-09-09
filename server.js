@@ -74,16 +74,15 @@ function sendMainMenu(chatId) {
 }
 
 // Handle Callback Queries
-bot.on('callback_query', (query) => {
-  const chatId = query.message.chat.id;
-  const user = db.get('users').find({ id: chatId }).value();
-
-  if (query.data === 'balance') {
-    const balance = user ? user.balance : 0;
+  if (query.data === 'deposit') {
     bot.answerCallbackQuery(query.id);
-    bot.sendMessage(chatId, `💰 የእርስዎ ቀሪ ሂሳብ: ${balance} ETB`);
+    bot.sendMessage(chatId, 
+      "💳 **የሂሳብ መሙያ (Deposit)**\n\n" +
+      "እባክዎን በ Telebirr ወይም CBE ብር ካስገቡ በኋላ **የላኩበትን Transaction ID / የደረሰኝ ቁጥር** ብቻ ወይም ሙሉ የደረሰኝ SMS መልዕክት አጋሩ።\n\n" +
+      "⚠️ **ማስጠንቀቂያ:** የተደገመ ወይም የተጭበረበረ የደረሰኝ ቁጥር ማስገባት መለያዎን ያታግዳል!"
+    );
   }
-});
+
 
 // Serve Web App Static Files
 app.get('*', (req, res) => {
@@ -849,3 +848,22 @@ bot.on('message', (msg) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => console.log(`Kaka Bingo Live on port ${PORT}`));
+
+// Automated Anti-Scam: Duplicate Transaction ID Check
+bot.on('message', (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) return;
+
+  const txMatch = msg.text.match(/[A-Z0-9]{10,14}/i);
+  if (txMatch) {
+    const txId = txMatch[0].toUpperCase();
+    if (!db.get('transactions').value()) {
+      db.defaults({ transactions: [] }).write();
+    }
+    const existingTx = db.get('transactions').find({ txId: txId }).value();
+    if (existingTx) {
+      bot.sendMessage(msg.chat.id, `❌ **ስህተት!** የትራንስፎርሜሽን ቁጥር (${txId}) ቀደም ሲል ጥቅም ላይ ውሏል!`);
+      return;
+    }
+    db.get('transactions').push({ txId: txId, userId: msg.chat.id, date: new Date().toISOString() }).write();
+  }
+});
