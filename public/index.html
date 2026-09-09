@@ -1,3 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kaka Bingo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --card-bg: #f1f1f1;
+      --accent-color: #ff4757;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --text-color: #ffffff;
+      --card-bg: #1e1e1e;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 350px;
+      text-align: center;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* Animated Win Spinner */
+    .win-timer-container {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      margin: 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .win-timer-spinner {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-top: 4px solid #2ed573;
+      animation: spin 1s linear infinite;
+    }
+
+    body.dark-mode .win-timer-spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top: 4px solid #2ed573;
+    }
+
+    .win-timer-text {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen 1: Card Selection -->
+  <div id="card-screen" class="screen active">
+    <h2>🎲 Select Cards</h2>
+    <p>Game starting soon...</p>
+    <button class="btn" onclick="startCardCountdown(3)">Lock Cards & Start</button>
+    <div id="card-timer-display" style="margin-top:15px; font-weight:bold;"></div>
+  </div>
+
+  <!-- Screen 2: Game Board Screen -->
+  <div id="game-screen" class="screen">
+    <h2>🎮 Kaka Bingo Live</h2>
+    <p>Playing round...</p>
+    <button class="btn" onclick="triggerWinScreen()">🔥 Claim Win!</button>
+  </div>
+
+  <!-- Screen 3: Win Screen -->
+  <div id="win-screen" class="screen">
+    <h2>🎉 YOU WON!</h2>
+    <p>Returning to card page in:</p>
+    
+    <div class="win-timer-container">
+      <div class="win-timer-spinner"></div>
+      <div class="win-timer-text" id="win-seconds-display">5</div>
+    </div>
+  </div>
+
+  <script>
+    // 1. Auto Telegram Dark/Light Mode
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+
+    function applyTelegramTheme() {
+      if (tg.colorScheme === 'dark') {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+    }
+    applyTelegramTheme();
+    tg.onEvent('themeChanged', applyTelegramTheme);
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    // 2. Fixed Countdown Timer (Card to Game)
+    let cardTimerInterval = null;
+    function startCardCountdown(seconds) {
+      if (cardTimerInterval) clearInterval(cardTimerInterval);
+
+      let remaining = seconds;
+      const display = document.getElementById('card-timer-display');
+      display.innerText = `Starting game in ${remaining}s...`;
+
+      cardTimerInterval = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          display.innerText = `Starting game in ${remaining}s...`;
+        } else {
+          clearInterval(cardTimerInterval);
+          display.innerText = '';
+          showScreen('game-screen');
+        }
+      }, 1000);
+    }
+
+    // 3. Animated Return Countdown Timer on Win Screen
+    let winTimerInterval = null;
+    function triggerWinScreen() {
+      showScreen('win-screen');
+      let count = 5;
+      const secondsDisplay = document.getElementById('win-seconds-display');
+      secondsDisplay.innerText = count;
+
+      if (winTimerInterval) clearInterval(winTimerInterval);
+
+      winTimerInterval = setInterval(() => {
+        count--;
+        secondsDisplay.innerText = count;
+        if (count <= 0) {
+          clearInterval(winTimerInterval);
+          showScreen('card-screen');
+        }
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
 <!-- Audio Effects -->
 <audio id="sound-number" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
 <audio id="sound-click" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" preload="auto"></audio>
