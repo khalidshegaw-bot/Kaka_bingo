@@ -1,3 +1,100 @@
+cat << 'EOF' > server.js
+const express = require('express');
+const path = require('path');
+const TelegramBot = require('node-telegram-bot-api');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+
+// 1. Setup Database
+const adapter = new FileSync('db.json');
+const db = low(adapter);
+db.defaults({ users: [], transactions: [] }).write();
+
+// 2. Setup Express & Config
+const app = express();
+const PORT = process.env.PORT || 8080;
+const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN';
+const WEB_APP_URL = process.env.WEB_APP_URL || 'https://colonialism-probable-gecko.abasthan.app';
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 3. Setup Telegram Bot
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
+// Handle /start Command
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const user = db.get('users').find({ id: chatId }).value();
+
+  if (!user) {
+    bot.sendMessage(chatId, "👋 ሰላም! እንኳን ወደ Kaka Bingo በደህና መጡ!\n\nለመጫወት እና ሽልማቶችን ለማሸነፍ እባክዎን አስቀድመው ስልክ ቁጥርዎን ያጋሩ።", {
+      reply_markup: {
+        keyboard: [[{ text: "📱 ስልክ ቁጥር አጋራ", request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
+    });
+  } else {
+    sendMainMenu(chatId);
+  }
+});
+
+// Handle Phone Contact Sharing (Strictly 0 ETB balance for new users)
+bot.on('contact', (msg) => {
+  const chatId = msg.chat.id;
+  const phone = msg.contact.phone_number;
+
+  let user = db.get('users').find({ id: chatId }).value();
+
+  if (!user) {
+    db.get('users').push({ 
+      id: chatId, 
+      phone: phone, 
+      balance: 0 
+    }).write();
+  }
+
+  bot.sendMessage(chatId, `✅ ምዝገባው በተሳካ ሁኔታ ተጠናቋል!\nተመዝግቧል: ${phone}`);
+  sendMainMenu(chatId);
+});
+
+// Send Main Menu Function
+function sendMainMenu(chatId) {
+  bot.sendMessage(chatId, "🎲 እንኳን ወደ Kaka Bingo Plus በደህና መጡ!\n\nከታች ያሉትን አዝራሮች በመጠቀም መጫወት እና ሂሳብዎን ማስተዳደር ይችላሉ።", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🎮 Play Kaka Bingo", web_app: { url: WEB_APP_URL } }],
+        [{ text: "💳 Deposit", callback_data: "deposit" }, { text: "🏧 Withdraw", callback_data: "withdraw" }],
+        [{ text: "💰 Balance", callback_data: "balance" }, { text: "👥 Invite Friends", callback_data: "invite" }],
+        [{ text: "💬 Support", callback_data: "support" }]
+      ]
+    }
+  });
+}
+
+// Handle Callback Queries
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const user = db.get('users').find({ id: chatId }).value();
+
+  if (query.data === 'balance') {
+    const balance = user ? user.balance : 0;
+    bot.answerCallbackQuery(query.id);
+    bot.sendMessage(chatId, `💰 የእርስዎ ቀሪ ሂሳብ: ${balance} ETB`);
+  }
+});
+
+// Serve Web App Static Files
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start Server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+EOF
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
