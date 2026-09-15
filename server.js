@@ -94,4 +94,15 @@ app.use((req, res) => {
 // Start Server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Kaka Bingo running on port ${PORT}`);
-});
+});// Keep-alive ping to prevent idle sleep
+const https = require('https');
+setInterval(() => {
+  if (WEB_APP_URL) {
+    https.get(WEB_APP_URL, (res) => {
+      console.log('Keep-alive ping sent');
+    }).on('error', (err) => {
+      console.error('Ping error:', err.message);
+    });
+  }
+}, 10 * 60 * 1000);
+
